@@ -63,6 +63,11 @@ Validation performed:
 - Targeted `oxlint` for modified Overview files
 - Pre-commit `vp check --fix`
 
+后续调整记录：
+
+- 2026-07-10：用户试用后反馈回合时间线点击范围偏小。已将每个回合按钮的点击高度从 `h-16` 扩大到
+  `h-32`，并把原来的横向外边距改为按钮内边距，让段与段之间的视觉空隙也属于可点击范围。统计逻辑未变。
+
 ## Current Code Map
 
 Overview page:

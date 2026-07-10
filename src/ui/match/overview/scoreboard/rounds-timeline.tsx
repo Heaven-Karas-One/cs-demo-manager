@@ -22,7 +22,7 @@ function Line({ isIncluded, isSelected, label, onClick, sideTeamA, winnerSide }:
       type="button"
       aria-label={label}
       aria-pressed={isSelected}
-      className="mx-4 flex h-16 grow border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-900"
+      className="flex h-32 grow border-0 bg-transparent px-4 py-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-900"
       onClick={onClick}
       style={{
         alignItems: sideTeamA === winnerSide ? 'flex-start' : 'flex-end',
