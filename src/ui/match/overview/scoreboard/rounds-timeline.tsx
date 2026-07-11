@@ -22,7 +22,7 @@ function Line({ isIncluded, isSelected, label, onClick, sideTeamA, winnerSide }:
       type="button"
       aria-label={label}
       aria-pressed={isSelected}
-      className="flex h-32 grow border-0 bg-transparent px-4 py-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-900"
+      className="flex h-48 grow border-0 bg-transparent px-4 py-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gray-900"
       onClick={onClick}
       style={{
         alignItems: sideTeamA === winnerSide ? 'flex-start' : 'flex-end',
@@ -49,7 +49,7 @@ export function RoundsTimeline({ rounds, selectedRoundNumber, onSelectRound }: P
   const { t } = useLingui();
 
   return (
-    <div className="my-8 flex" role="group">
+    <div className="flex" role="group">
       {rounds.map((round, index) => {
         let isNextRoundSideSwitch = false;
         if (index < rounds.length - 1) {
