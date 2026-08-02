@@ -3291,7 +3291,7 @@ msgid "Use the 64-bit version of your Steam ID (e.g., 76561198000000000)."
 msgstr "Use the 64-bit version of your Steam ID (e.g., 76561198000000000)."
 
 #: src/ui/downloads/renown/use-renown-scoreboard-columns.ts
-msgctxt "Table header kill count"
+msgctxt "Table header Leetify rating"
 msgid "LR"
 msgstr "LR"
 
@@ -7910,6 +7910,10 @@ msgstr "You selected a version compatible with CS2 from the {update14104} update
 #: src/ui/settings/playback/cs2-plugin-select.tsx
 msgid "If not using a custom build, you must select the CS2 beta branch <0>\"1.41.1.2\"</0> in your Steam library to use this version."
 msgstr "If not using a custom build, you must select the CS2 beta branch <0>\"1.41.1.2\"</0> in your Steam library to use this version."
+
+#: src/ui/settings/playback/cs2-plugin-select.tsx
+msgid "You selected a version compatible with CS2 from the {animgraph2UpdateDate} update up to the {update14168} update."
+msgstr "You selected a version compatible with CS2 from the {animgraph2UpdateDate} update up to the {update14168} update."
 
 #: src/ui/settings/playback/cs2-plugin-select.tsx
 msgid "You selected a version compatible with CS2 from the {update14112} update up to the {animgraph2UpdateDate} update."
