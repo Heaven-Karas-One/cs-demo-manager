@@ -18,7 +18,7 @@ import { CameraPreviewInput } from './camera-preview-input';
 import { Button, ButtonVariant } from 'csdm/ui/components/buttons/button';
 import { useCounterStrike } from 'csdm/ui/hooks/use-counter-strike';
 import { useWebSocketClient } from 'csdm/ui/hooks/use-web-socket-client';
-import { RendererClientMessageName } from 'csdm/server/renderer-client-message-name';
+import { RendererClientMessageName } from 'csdm/server/messages/renderer-client-message-name';
 import { Game } from 'csdm/common/types/counter-strike';
 import { isErrorCode } from 'csdm/common/is-error-code';
 import { ErrorCode } from 'csdm/common/error-code';
@@ -135,7 +135,7 @@ export function CameraForm({ nameInput, error, onSubmit }: Props) {
 
                   const isCsgo = game === Game.CSGO;
                   if (!isCsgo) {
-                    window.csdm.clearClipboard(); // clear the clipboard to ensure we don't read an old setpos command
+                    await window.csdm.clearClipboard(); // clear the clipboard to ensure we don't read an old setpos command
                   }
 
                   const result = await client.send({
@@ -148,7 +148,7 @@ export function CameraForm({ nameInput, error, onSubmit }: Props) {
                   let coordinates: CameraCoordinates | null = result.game === Game.CSGO ? result : null;
                   if (!isCsgo) {
                     await sleep(500); // Wait a moment to ensure the clipboard is up-to-date.
-                    const setposCommand = window.csdm.getClipboardText();
+                    const setposCommand = await window.csdm.getClipboardText();
                     coordinates = extractCoordinatesFromCommand(setposCommand);
                   }
 

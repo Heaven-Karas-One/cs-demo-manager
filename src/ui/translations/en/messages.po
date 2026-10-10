@@ -325,11 +325,6 @@ msgstr "No VAC ban stats to show, you must analyze demos to generate stats."
 msgid "An error occurred while loading the application."
 msgstr "An error occurred while loading the application."
 
-#: src/ui/bootstrap/connect-database/connect-database-button.tsx
-msgctxt "Button"
-msgid "Connect"
-msgstr "Connect"
-
 #: src/ui/bootstrap/connect-database/connect-database.tsx
 msgid "It looks like you installed an older version of CS Demo Manager and the current database schema is not compatible with it."
 msgstr "It looks like you installed an older version of CS Demo Manager and the current database schema is not compatible with it."
@@ -339,12 +334,20 @@ msgid "You can either update CS Demo Manager to the latest version or reset the 
 msgstr "You can either update CS Demo Manager to the latest version or reset the database to start from scratch."
 
 #: src/ui/bootstrap/connect-database/connect-database.tsx
-msgid "It usually means that PostgreSQL is not installed on your system or the path to the <0>psql</0> executable is not in your <1>PATH</1> environment variable."
-msgstr "It usually means that PostgreSQL is not installed on your system or the path to the <0>psql</0> executable is not in your <1>PATH</1> environment variable."
+msgid "The embedded PostgreSQL server could not be started, see the application log file and the PostgreSQL log file in <0>{folderPath}</0> for details."
+msgstr "The embedded PostgreSQL server could not be started, see the application log file and the PostgreSQL log file in <0>{folderPath}</0> for details."
 
 #: src/ui/bootstrap/connect-database/connect-database.tsx
-msgid "It usually means that the PostgreSQL service is not running, make sure it's running."
-msgstr "It usually means that the PostgreSQL service is not running, make sure it's running."
+msgid "The existing data was created by a different PostgreSQL version than the one bundled with this version of CS Demo Manager, it cannot be read."
+msgstr "The existing data was created by a different PostgreSQL version than the one bundled with this version of CS Demo Manager, it cannot be read."
+
+#: src/ui/bootstrap/connect-database/connect-database.tsx
+msgid "To keep your data, follow the <0>migration guide</0> before connecting. Otherwise you can delete the data and start from scratch."
+msgstr "To keep your data, follow the <0>migration guide</0> before connecting. Otherwise you can delete the data and start from scratch."
+
+#: src/ui/bootstrap/connect-database/connect-database.tsx
+msgid "The PostgreSQL binaries bundled with CS Demo Manager are missing, reinstall the application or use an external server."
+msgstr "The PostgreSQL binaries bundled with CS Demo Manager are missing, reinstall the application or use an external server."
 
 #: src/ui/bootstrap/connect-database/connect-database.tsx
 msgid "This error usually means that the database is not running or that the connection settings are incorrect."
@@ -359,8 +362,24 @@ msgid "The connection to the database failed with the following error:"
 msgstr "The connection to the database failed with the following error:"
 
 #: src/ui/bootstrap/connect-database/connect-database.tsx
-msgid "CS Demo Manager requires a PostgreSQL database."
-msgstr "CS Demo Manager requires a PostgreSQL database."
+#: src/ui/settings/database/database.tsx
+#: src/ui/settings/settings-tabs.tsx
+msgid "Database"
+msgstr "Database"
+
+#: src/ui/bootstrap/connect-database/connect-database.tsx
+msgid "Choose where CS Demo Manager stores its data."
+msgstr "Choose where CS Demo Manager stores its data."
+
+#: src/ui/bootstrap/connect-database/connect-database.tsx
+msgctxt "Button"
+msgid "Continue"
+msgstr "Continue"
+
+#: src/ui/bootstrap/connect-database/connect-database.tsx
+msgctxt "Button"
+msgid "Connect"
+msgstr "Connect"
 
 #: src/ui/bootstrap/connect-database/connect-database.tsx
 msgid "{secondsBeforeNextTry, plural, one {Retrying in # second…} other {Retrying in # seconds…}}"
@@ -534,10 +553,6 @@ msgstr "Folder not found"
 #: src/ui/settings/about/reveal-counter-strike-log-file-button.tsx
 msgid "The log file does not exist"
 msgstr "The log file does not exist"
-
-#: src/ui/components/buttons/reveal-log-file-button.tsx
-msgid "Reveal log file"
-msgstr "Reveal log file"
 
 #: src/ui/components/buttons/save-button.tsx
 msgctxt "Button"
@@ -4208,6 +4223,11 @@ msgid "Thrown"
 msgstr "Thrown"
 
 #: src/ui/match/match-loader.tsx
+#: src/ui/match/viewer-2d/no-positions-found.tsx
+msgid "Analyzing demo…"
+msgstr "Analyzing demo…"
+
+#: src/ui/match/match-loader.tsx
 msgid "Fetching match…"
 msgstr "Fetching match…"
 
@@ -5078,6 +5098,10 @@ msgctxt "Input label"
 msgid "Quality"
 msgstr "Quality"
 
+#: src/ui/match/video/ffmpeg/constant-rate-factor-input.tsx
+msgid "Quality 0 with libx264 creates a lossless video that some players can't decode."
+msgstr "Quality 0 with libx264 creates a lossless video that some players can't decode."
+
 #: src/ui/match/video/ffmpeg/ffmpeg-audio-bitrate-select.tsx
 msgctxt "Input label"
 msgid "Audio bitrate"
@@ -5747,9 +5771,10 @@ msgid "H"
 msgstr "H"
 
 #: src/ui/match/video/sequence/sequence-players.tsx
+#: src/ui/match/video/sequences/edit-sequences/player-options/sequence-players-options.tsx
 msgctxt "Table header tooltip"
-msgid "Highlight kills kills"
-msgstr "Highlight kills kills"
+msgid "Highlight kills"
+msgstr "Highlight kills"
 
 #: src/ui/match/video/sequence/sequence-players.tsx
 #: src/ui/match/video/sequences/edit-sequences/player-options/sequence-players-options.tsx
@@ -5820,11 +5845,6 @@ msgstr "Override CFG"
 #: src/ui/match/video/sequences/edit-sequences/edit-sequences-settings-dialog.tsx
 msgid "Override player options"
 msgstr "Override player options"
-
-#: src/ui/match/video/sequences/edit-sequences/player-options/sequence-players-options.tsx
-msgctxt "Table header tooltip"
-msgid "Highlight kills"
-msgstr "Highlight kills"
 
 #: src/ui/match/video/sequences/required-disk-space.tsx
 msgctxt "Disk usage in megabyte"
@@ -5992,10 +6012,6 @@ msgid "Inserting positions into the database…"
 msgstr "Inserting positions into the database…"
 
 #: src/ui/match/viewer-2d/no-positions-found.tsx
-msgid "Analyzing demo…"
-msgstr "Analyzing demo…"
-
-#: src/ui/match/viewer-2d/no-positions-found.tsx
 msgid "Positions"
 msgstr "Positions"
 
@@ -6113,8 +6129,8 @@ msgid "{time} Bomb planted by {planterName} exploded at site {site}"
 msgstr "{time} Bomb planted by {planterName} exploded at site {site}"
 
 #: src/ui/match/viewer-2d/playback-bar/bomb-planted-indicator.tsx
-msgid "{time} Bomb planted by {planterName} at bomb site {site}"
-msgstr "{time} Bomb planted by {planterName} at bomb site {site}"
+msgid "{time} Bomb planted by {planterName} at site {site}"
+msgstr "{time} Bomb planted by {planterName} at site {site}"
 
 #: src/ui/match/viewer-2d/playback-bar/drawing-button.tsx
 msgid "Tool"
@@ -7185,6 +7201,14 @@ msgid "Logs"
 msgstr "Logs"
 
 #: src/ui/settings/about/about.tsx
+msgid "Reveal log file"
+msgstr "Reveal log file"
+
+#: src/ui/settings/about/about.tsx
+msgid "Reveal PostgreSQL log file"
+msgstr "Reveal PostgreSQL log file"
+
+#: src/ui/settings/about/about.tsx
 msgid "Credits"
 msgstr "Credits"
 
@@ -7472,9 +7496,71 @@ msgctxt "Input label"
 msgid "Yaw"
 msgstr "Yaw"
 
+#: src/ui/settings/database/database-mode-option-cards.tsx
+msgid "Embedded (recommended)"
+msgstr "Embedded (recommended)"
+
+#: src/ui/settings/database/database-mode-option-cards.tsx
+msgid "Managed by CS Demo Manager, nothing to install."
+msgstr "Managed by CS Demo Manager, nothing to install."
+
+#: src/ui/settings/database/database-mode-option-cards.tsx
+msgid "External server"
+msgstr "External server"
+
+#: src/ui/settings/database/database-mode-option-cards.tsx
+msgid "Use your own PostgreSQL server, local or remote."
+msgstr "Use your own PostgreSQL server, local or remote."
+
 #: src/ui/settings/database/database-size.tsx
 msgid "Database size: <0>{size}</0>."
 msgstr "Database size: <0>{size}</0>."
+
+#: src/ui/settings/database/database.tsx
+msgid "Host"
+msgstr "Host"
+
+#: src/ui/settings/database/database.tsx
+msgid "Port"
+msgstr "Port"
+
+#: src/ui/settings/database/database.tsx
+msgid "User"
+msgstr "User"
+
+#: src/ui/settings/database/database.tsx
+msgid "Connection"
+msgstr "Connection"
+
+#: src/ui/settings/database/database.tsx
+msgid "Connected to the embedded PostgreSQL server."
+msgstr "Connected to the embedded PostgreSQL server."
+
+#: src/ui/settings/database/database.tsx
+msgid "Connected to an external PostgreSQL server."
+msgstr "Connected to an external PostgreSQL server."
+
+#: src/ui/settings/database/database.tsx
+msgid "Disconnect to connect to another server."
+msgstr "Disconnect to connect to another server."
+
+#: src/ui/settings/database/delete-embedded-database-data-button.tsx
+msgctxt "Dialog title"
+msgid "Delete database data"
+msgstr "Delete database data"
+
+#: src/ui/settings/database/delete-embedded-database-data-button.tsx
+msgid "It will delete all data of the embedded database: matches, comments, tags, maps, cameras…"
+msgstr "It will delete all data of the embedded database: matches, comments, tags, maps, cameras…"
+
+#: src/ui/settings/database/delete-embedded-database-data-button.tsx
+msgid "Match statistics can be restored by analyzing the demos again, the rest will be lost."
+msgstr "Match statistics can be restored by analyzing the demos again, the rest will be lost."
+
+#: src/ui/settings/database/delete-embedded-database-data-button.tsx
+msgctxt "Button"
+msgid "Delete data and start from scratch"
+msgstr "Delete data and start from scratch"
 
 #: src/ui/settings/database/disconnect-database-button.tsx
 msgctxt "Dialog title"
@@ -8179,10 +8265,6 @@ msgid "Integrations"
 msgstr "Integrations"
 
 #: src/ui/settings/settings-tabs.tsx
-msgid "Database"
-msgstr "Database"
-
-#: src/ui/settings/settings-tabs.tsx
 msgid "About"
 msgstr "About"
 
@@ -8428,6 +8510,10 @@ msgid "Show X-Ray"
 msgstr "Show X-Ray"
 
 #: src/ui/shared/get-playback-error-from-error-code.tsx
+msgid "Please make sure that <0>CS:GO</0> is installed from Steam."
+msgstr "Please make sure that <0>CS:GO</0> is installed from Steam."
+
+#: src/ui/shared/get-playback-error-from-error-code.tsx
 msgid "Match not found"
 msgstr "Match not found"
 
@@ -8444,16 +8530,8 @@ msgid "Failed to start the game, make sure Steam is running and you are connecte
 msgstr "Failed to start the game, make sure Steam is running and you are connected."
 
 #: src/ui/shared/get-playback-error-from-error-code.tsx
-msgid "Please make sure that CS:GO is installed by selecting the <0>csgo_legacy</0> branch from the CS2 \"Betas\" property tab on Steam."
-msgstr "Please make sure that CS:GO is installed by selecting the <0>csgo_legacy</0> branch from the CS2 \"Betas\" property tab on Steam."
-
-#: src/ui/shared/get-playback-error-from-error-code.tsx
 msgid "Make sure Steam is not installed through Flatpak as it's not supported!"
 msgstr "Make sure Steam is not installed through Flatpak as it's not supported!"
-
-#: src/ui/shared/get-playback-error-from-error-code.tsx
-msgid "Please make sure that CS:GO is installed by selecting the \"csgo_legacy\" branch from the CS2 \"Betas\" property tab on Steam."
-msgstr "Please make sure that CS:GO is installed by selecting the \"csgo_legacy\" branch from the CS2 \"Betas\" property tab on Steam."
 
 #: src/ui/shared/get-playback-error-from-error-code.tsx
 msgid "Read the <0>documentation</0> for more information."

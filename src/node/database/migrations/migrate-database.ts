@@ -12,7 +12,7 @@ import { DatabaseSchemaVersionMismatch } from '../database-schema-version-mismat
 // It's used to migrate database schema at app startup.
 // If you need to change the database schema or change data currently in the DB, this variable has to be incremented
 // and the corresponding migration must be added to the getAllMigrations function!
-const CURRENT_SCHEMA_VERSION = 14;
+const CURRENT_SCHEMA_VERSION = 15;
 
 function getMigrationsForUpgrade(migrations: Migration[], currentSchemaVersion: number) {
   return migrations.filter((migration) => {
@@ -35,6 +35,13 @@ async function getCurrentSchemaVersion() {
     }
 
     throw error;
+  }
+}
+
+export async function assertDatabaseSchemaVersionMatches() {
+  const databaseSchemaVersion = await getCurrentSchemaVersion();
+  if (databaseSchemaVersion !== CURRENT_SCHEMA_VERSION) {
+    throw new DatabaseSchemaVersionMismatch(databaseSchemaVersion, CURRENT_SCHEMA_VERSION);
   }
 }
 

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { server } from './server';
-import { RendererServerMessageName } from 'csdm/server/renderer-server-message-name';
+import { ServerPushMessageName } from 'csdm/server/messages/server-push-message-name';
 import type { Demo } from 'csdm/common/types/demo';
 import type { Analysis } from 'csdm/common/types/analysis';
 import { AnalysisStatus } from 'csdm/common/types/analysis-status';
@@ -16,6 +16,9 @@ import { MAX_CONCURRENT_ANALYSES } from 'csdm/common/analyses';
 class AnalysesListener {
   private analyses: Analysis[] = [];
   private currentAnalyses: Analysis[] = [];
+  // Tracks which client connections queued or wait for a demo so its pending analysis can be canceled when the last
+  // of them disconnects. Demos queued by the GUI are not tracked and never canceled on disconnect.
+  private clientIdsPerChecksum = new Map<string, Set<string>>();
   private outputFolderPath: string; // Folder path where CSV files will be write on the host
 
   public constructor() {
@@ -26,13 +29,46 @@ class AnalysesListener {
     this.analyses = this.analyses.filter((analysis) => {
       return !checksums.includes(analysis.demoChecksum);
     });
+    for (const checksum of checksums) {
+      this.clientIdsPerChecksum.delete(checksum);
+    }
     logger.log(`checksums removed from analyses`, checksums);
   }
 
-  public async addDemosToAnalyses(demos: Demo[]) {
+  public removeDemosAddedByClient(clientId: string) {
+    const checksums: string[] = [];
+    for (const [checksum, clientIds] of this.clientIdsPerChecksum) {
+      // Cancel the analysis only when no other client is waiting for it.
+      if (clientIds.delete(clientId) && clientIds.size === 0) {
+        checksums.push(checksum);
+      }
+    }
+
+    if (checksums.length > 0) {
+      logger.log(`Removing ${checksums.length} pending analysis(es) added by the client ${clientId}`);
+      this.removeDemosByChecksums(checksums);
+      server.sendPushMessage({
+        name: ServerPushMessageName.DemosRemovedFromAnalyses,
+        payload: checksums,
+      });
+    }
+  }
+
+  public async addDemosToAnalyses(demos: Demo[], options?: { analyzePositions?: boolean; clientId?: string }) {
+    const clientId = options?.clientId;
     const demosNotInPendingAnalyses = demos.filter((demo) => {
       return !this.analyses.some((analysis) => analysis.demoChecksum === demo.checksum);
     });
+
+    if (typeof clientId === 'string') {
+      // A demo may already be pending, queued by another client: record this client as an extra owner so the analysis
+      // survives the other client's disconnection. Untracked pending demos were queued by the GUI, they are never
+      // canceled on disconnect so there is nothing to record.
+      for (const demo of demos) {
+        this.clientIdsPerChecksum.get(demo.checksum)?.add(clientId);
+      }
+    }
+
     if (demosNotInPendingAnalyses.length === 0) {
       return;
     }
@@ -46,14 +82,20 @@ class AnalysesListener {
         mapName: demo.mapName,
         source: demo.source,
         output: '',
+        analyzePositions: options?.analyzePositions,
       };
 
       return analysis;
     });
     this.analyses.push(...analyses);
+    if (typeof clientId === 'string') {
+      for (const analysis of analyses) {
+        this.clientIdsPerChecksum.set(analysis.demoChecksum, new Set([clientId]));
+      }
+    }
 
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.DemosAddedToAnalyses,
+    server.sendPushMessage({
+      name: ServerPushMessageName.DemosAddedToAnalyses,
       payload: analyses,
     });
 
@@ -71,6 +113,7 @@ class AnalysesListener {
   public clear() {
     this.analyses = [];
     this.currentAnalyses = [];
+    this.clientIdsPerChecksum.clear();
   }
 
   private hasPendingAnalyses = () => {
@@ -88,6 +131,8 @@ class AnalysesListener {
     while (this.analyses.length > 0 && this.currentAnalyses.length < maxConcurrentAnalyses) {
       const analysis = this.analyses.shift();
       if (analysis) {
+        // The analysis is starting: it cannot be interrupted anymore, stop tracking its owners.
+        this.clientIdsPerChecksum.delete(analysis.demoChecksum);
         this.currentAnalyses.push(analysis);
         const analysisPromise = this.processAnalysis(analysis, settings.analyze.analyzePositions)
           .catch((error) => {
@@ -120,20 +165,20 @@ class AnalysesListener {
         demoPath,
         outputFolderPath: this.getAnalysisOutputFolderPath(analysis),
         source,
-        analyzePositions,
+        analyzePositions: analysis.analyzePositions ?? analyzePositions,
         onStdout: (data) => {
           logger.log(data);
           analysis.output += data;
-          server.sendMessageToRendererProcess({
-            name: RendererServerMessageName.AnalysisUpdated,
+          server.sendPushMessage({
+            name: ServerPushMessageName.AnalysisUpdated,
             payload: analysis,
           });
         },
         onStderr(data) {
           logger.error(data);
           analysis.output += data;
-          server.sendMessageToRendererProcess({
-            name: RendererServerMessageName.AnalysisUpdated,
+          server.sendPushMessage({
+            name: ServerPushMessageName.AnalysisUpdated,
             payload: analysis,
           });
         },
@@ -167,27 +212,26 @@ class AnalysesListener {
         outputFolderPath: this.getAnalysisOutputFolderPath(analysis),
       });
       this.updateAnalysisStatus(analysis, AnalysisStatus.InsertSuccess);
-      server.sendMessageToRendererProcess({
-        name: RendererServerMessageName.MatchInserted,
+      server.sendPushMessage({
+        name: ServerPushMessageName.MatchInserted,
         payload: match,
       });
     } catch (error) {
-      logger.error('Error while inserting match');
-      logger.error(error);
-      logger.error(JSON.stringify(error));
       let errorOutput: string;
       if (error instanceof Error) {
-        errorOutput = error.message;
-        if (error.stack) {
-          errorOutput += `\n${error.stack}`;
-        }
+        errorOutput = error.stack ?? error.message;
         if (error.cause) {
           errorOutput += `\n${error.cause as string}`;
         }
-        errorOutput += `\n${JSON.stringify(error)}`;
+        const jsonError = JSON.stringify(error);
+        if (jsonError !== '{}') {
+          errorOutput += `\n${jsonError}`;
+        }
       } else {
         errorOutput = String(error);
       }
+      logger.error('Error while inserting match');
+      logger.error(errorOutput);
       analysis.output += errorOutput;
 
       this.updateAnalysisStatus(analysis, AnalysisStatus.InsertError, getErrorCodeFromError(error));
@@ -197,8 +241,8 @@ class AnalysesListener {
   private updateAnalysisStatus = (analysis: Analysis, status: AnalysisStatus, errorCode?: ErrorCode) => {
     analysis.status = status;
     analysis.errorCode = errorCode;
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.AnalysisUpdated,
+    server.sendPushMessage({
+      name: ServerPushMessageName.AnalysisUpdated,
       payload: analysis,
     });
   };

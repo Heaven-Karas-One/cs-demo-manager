@@ -3,6 +3,14 @@
 These notes are for long-term customization work on the personal fork
 `Heaven-Karas-One/cs-demo-manager`, whose upstream is `akiver/cs-demo-manager`.
 
+## 2026-10-10 架构更新
+
+本文下方为早期工程记录。当前架构以 `AGENTS.md` 和
+`docs/upstream-2026-10-10-sync-log.md` 为准：WebSocket 服务已改为 GUI/CLI 共用后台，消息类型位于
+`src/server/messages/`，支持内置与外部 PostgreSQL。custom 的后台发现文件名由
+`src/common/app-identity.ts` 定义，开发重构建脚本使用同一名称；数据库设置文件路径保持原状。
+`upstream` 远端已经配置，`main` 跟踪纯上游，`dev` 保留定制功能。
+
 ## Current Local State
 
 - Working branch observed: `dev`.

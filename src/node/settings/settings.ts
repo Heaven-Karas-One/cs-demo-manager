@@ -12,18 +12,23 @@ import type { RecordingSystem } from 'csdm/common/types/recording-system';
 import type { RecordingOutput } from 'csdm/common/types/recording-output';
 import type { DisplayMode } from 'csdm/common/types/display-mode';
 import type { ArchiveFormat } from 'csdm/common/types/archive-format';
+import type { DatabaseMode } from 'csdm/common/types/database-mode';
 
 export type Folder = {
   path: string;
   includeSubFolders: boolean;
 };
 
-export type DatabaseSettings = {
+export type DatabaseConnectionSettings = {
   readonly hostname: string;
   readonly port: number;
   readonly username: string;
   readonly password: string;
   readonly database: string;
+};
+
+export type DatabaseSettings = DatabaseConnectionSettings & {
+  readonly mode: DatabaseMode;
 };
 
 type DemosSettings = DemosTableFilter & {
@@ -175,6 +180,9 @@ type BanSettings = {
 export type Settings = {
   schemaVersion: number;
   autoDownloadUpdates: boolean;
+  // @platform darwin The OS can't start the app hidden at login (Apple removed this option in macOS 13), so the app
+  // stores the preference itself and decides at launch whether to show the main window.
+  startMinimizedAtLogin: boolean;
   database: DatabaseSettings;
   folders: Folder[];
   autoExtractDemosFromArchives: ArchiveFormat[];

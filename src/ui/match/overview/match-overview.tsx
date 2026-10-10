@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Content } from 'csdm/ui/components/content';
 import { MatchActionBar } from './action-bar/action-bar';
 import { RoundsTimeline } from './scoreboard/rounds-timeline';
@@ -19,14 +19,12 @@ export function MatchOverview() {
       ? Math.min(roundSelection.roundNumber, lastRoundNumber)
       : lastRoundNumber;
 
-  useEffect(() => {
-    if (roundSelection.checksum !== match.checksum || roundSelection.roundNumber > lastRoundNumber) {
-      setRoundSelection({
-        checksum: match.checksum,
-        roundNumber: lastRoundNumber,
-      });
-    }
-  }, [lastRoundNumber, match.checksum, roundSelection]);
+  if (roundSelection.checksum !== match.checksum || roundSelection.roundNumber > lastRoundNumber) {
+    setRoundSelection({
+      checksum: match.checksum,
+      roundNumber: lastRoundNumber,
+    });
+  }
 
   return (
     <MatchOverviewProvider selectedRoundNumber={selectedRoundNumber}>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Trans, useLingui } from '@lingui/react/macro';
 import type { PlayerFlashbangMatchup, PlayerGrenadesStats } from 'csdm/common/types/player-grenades-stats';
 import { Status } from 'csdm/common/types/status';
-import { RendererClientMessageName } from 'csdm/server/renderer-client-message-name';
+import { RendererClientMessageName } from 'csdm/server/messages/renderer-client-message-name';
 import { Content } from 'csdm/ui/components/content';
 import { ErrorMessage } from 'csdm/ui/components/error-message';
 import { Message } from 'csdm/ui/components/message';

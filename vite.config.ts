@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite-plus';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
-import { lingui, linguiTransformerBabelPreset } from '@lingui/vite-plugin';
+import { lingui } from '@lingui/vite-plugin';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/vite';
 import { chrome } from './scripts/electron-vendors.mjs';
@@ -34,8 +34,8 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    lingui(),
-    babel({ presets: [reactCompilerPreset(), linguiTransformerBabelPreset()] }),
+    lingui({ macroTransform: true }),
+    babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
     {
       name: 'write-changelog-file',
@@ -180,7 +180,7 @@ export default defineConfig({
       'e18e/prefer-object-has-own': 'error',
       'e18e/prefer-spread-syntax': 'error',
       'e18e/prefer-url-canparse': 'error',
-      'e18e/ban-dependencies': ['error', { allowed: ['fs-extra'] }],
+      'e18e/ban-dependencies': ['error', { allowed: ['fs-extra', 'deepmerge'] }],
 
       // File naming rules
       'check-file/filename-naming-convention': [
@@ -305,6 +305,15 @@ export default defineConfig({
           'import/no-default-export': 'off',
         },
       },
+      {
+        // Redeclarations are already checked by the TypeScript compiler and the rule reports legit declaration merging
+        // such as `export const Foo = {...} as const; export type Foo = ...`.
+        // See https://github.com/oxc-project/oxc/issues/25936
+        files: ['**/*.{ts,tsx,mts,cts}'],
+        rules: {
+          'no-redeclare': 'off',
+        },
+      },
     ],
   },
   fmt: {
@@ -340,7 +349,6 @@ export default defineConfig({
       '*.woff2',
       '*.cpp',
       '*.gyp',
-      '.node-version',
       'cs2-server-plugin',
       'csgo-server-plugin',
     ],

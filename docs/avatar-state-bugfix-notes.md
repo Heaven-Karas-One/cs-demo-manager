@@ -13,8 +13,9 @@ the previous image source when a new player was rendered.
 
 ## Fix
 
-Both avatar components now derive an `avatarSrc` from the latest `avatarUrl` prop and synchronize the local `src` state
-in a `useEffect`. The local state is still kept so a broken image URL can fall back to the default avatar.
+2026-10-10 上游同步时，两个头像组件改为直接从最新的 `avatarUrl` 派生图片地址，只在本地状态记录
+加载失败的 URL。失败地址显示默认头像，切换到不同地址立即使用新地址；图片元素以地址作为 key。
+不再通过 effect 同步图片地址，符合升级后的 React lint 规则，也避免首帧显示上一位玩家的头像。
 
 Validation:
 

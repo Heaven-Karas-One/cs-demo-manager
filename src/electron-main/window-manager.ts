@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { BrowserWindow, app, shell } from 'electron';
-import windowStateKeeper from 'electron-window-state';
 import { IPCChannel } from 'csdm/common/ipc-channel';
 import { ArgumentName } from 'csdm/common/argument/argument-name';
 import type { Argument } from 'csdm/common/types/argument';
@@ -9,7 +8,7 @@ import { listenForContextMenu } from 'csdm/electron-main/listen-for-context-menu
 
 class WindowManager {
   private mainWindow: BrowserWindow | null = null;
-  private devWindow: BrowserWindow | null = null;
+  private createMainWindowPromise: Promise<BrowserWindow> | null = null;
   private startupArguments: Argument[] = [];
 
   public constructor() {
@@ -45,64 +44,40 @@ class WindowManager {
   };
 
   public getOrCreateMainWindow = async () => {
-    if (this.mainWindow === null || this.mainWindow.isDestroyed()) {
-      this.mainWindow = await this.createMainWindow();
+    if (this.mainWindow !== null && !this.mainWindow.isDestroyed()) {
+      return this.mainWindow;
     }
 
-    return this.mainWindow;
+    // The window creation is asynchronous and events such as a macOS dock click may be triggered during the creation.
+    // We store the promise to avoid creating multiple windows.
+    if (this.createMainWindowPromise === null) {
+      this.createMainWindowPromise = this.createAndTrackMainWindow();
+    }
+
+    return this.createMainWindowPromise;
   };
+
+  private async createAndTrackMainWindow() {
+    try {
+      this.mainWindow = await this.createMainWindow();
+
+      return this.mainWindow;
+    } finally {
+      this.createMainWindowPromise = null;
+    }
+  }
 
   public getMainWindow() {
     return this.mainWindow;
   }
 
-  public getDevWindow() {
-    return this.devWindow;
-  }
-
-  public async createDevWindow(): Promise<BrowserWindow> {
-    const windowState = windowStateKeeper({
-      defaultWidth: 1024,
-      defaultHeight: 768,
-      file: `window-state-dev.json`,
-    });
-
-    const devWindow = new BrowserWindow({
-      x: windowState.x,
-      y: windowState.y,
-      width: windowState.width,
-      height: windowState.height,
-      webPreferences: {
-        nodeIntegration: true,
-        preload: path.join(app.getAppPath(), 'dev-preload.js'),
-        contextIsolation: false,
-      },
-      backgroundColor: '#080808',
-    });
-
-    windowState.manage(devWindow);
-
-    devWindow.on('close', () => {
-      app.exit();
-    });
-
-    devWindow.webContents.openDevTools();
-    await devWindow.loadFile('dev.html');
-
-    return devWindow;
-  }
-
   private async createMainWindow() {
-    const windowState = windowStateKeeper({
-      defaultWidth: 1024,
-      defaultHeight: 768,
-      file: `window-state-main.json`,
-    });
     const mainWindow = new BrowserWindow({
-      x: windowState.x,
-      y: windowState.y,
-      width: windowState.width,
-      height: windowState.height,
+      // Persist bounds and display mode (maximized, fullscreen...) across restarts, requires a unique window name.
+      name: 'main',
+      windowStatePersistence: true,
+      width: 1024,
+      height: 768,
       minWidth: 500,
       minHeight: 400,
       webPreferences: {
@@ -117,8 +92,6 @@ class WindowManager {
       show: IS_DEV,
       backgroundColor: '#000',
     });
-
-    windowState.manage(mainWindow);
 
     mainWindow.on('unmaximize', () => {
       mainWindow.webContents.send(IPCChannel.WindowUnMaximized);

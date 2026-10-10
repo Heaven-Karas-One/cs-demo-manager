@@ -1,4 +1,5 @@
 import type { Settings } from 'csdm/node/settings/settings';
+import { throwErrorMessage } from 'csdm/server/handlers/throw-error-message';
 import type { Analysis } from 'csdm/common/types/analysis';
 import type { FaceitAccount } from 'csdm/common/types/faceit-account';
 import { fetchMaps } from 'csdm/node/database/maps/fetch-maps';
@@ -36,6 +37,7 @@ export type InitializeApplicationSuccessPayload = {
   downloads: Download[];
   ignoredSteamAccounts: IgnoredSteamAccount[];
   videos: Video[];
+  isVideoQueuePaused: boolean;
 };
 
 export async function initializeApplicationHandler() {
@@ -74,19 +76,13 @@ export async function initializeApplicationHandler() {
       analyses: analysesListener.getAnalyses(),
       downloads: downloadDemoQueue.getDownloads(),
       videos: videoQueue.getVideos(),
+      isVideoQueuePaused: videoQueue.getIsPaused(),
     };
 
     void startBackgroundTasks();
 
     return payload;
   } catch (error) {
-    logger.error('App initialization error');
-    logger.error(error);
-    let errorMessage = 'Unknown error';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-
-    throw errorMessage;
+    throwErrorMessage(error, 'App initialization error');
   }
 }

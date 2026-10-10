@@ -4,7 +4,36 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch CLI",
+      "name": "Debug app",
+      "program": "${workspaceFolder}/scripts/develop.mjs",
+      "runtimeArgs": ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON"],
+      "cwd": "${workspaceFolder}",
+      "autoAttachChildProcesses": true,
+      "outFiles": ["${workspaceFolder}/out/*.js"],
+      "console": "internalConsole"
+    },
+    {
+      "type": "chrome",
+      "request": "attach",
+      "name": "Attach to renderer",
+      // Must match RENDERER_REMOTE_DEBUGGING_PORT in src/node/debug-ports.ts
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/src/ui",
+      "timeout": 60000
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Attach to daemon",
+      // Must match SERVER_INSPECTOR_PORT in src/node/debug-ports.ts
+      "port": 9229,
+      "restart": true,
+      "outFiles": ["${workspaceFolder}/out/*.js"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug CLI",
       "osx": {
         "runtimeExecutable": "${workspaceFolder}/scripts/cli_darwin.sh"
       },
@@ -14,19 +43,36 @@
       "linux": {
         "runtimeExecutable": "${workspaceFolder}/scripts/cli.sh"
       },
-      "outFiles": ["${workspaceFolder}/out/cli.js"],
-      "args": ["analyze"]
+      "autoAttachChildProcesses": true,
+      "outFiles": ["${workspaceFolder}/out/*.js"],
+      "console": "internalConsole",
+      "args": "${input:cliArgs}"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug Current Test File",
+      "name": "Debug current test file",
       "autoAttachChildProcesses": true,
       "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
-      "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
       "args": ["run", "${relativeFile}"],
       "smartStep": true,
-      "console": "integratedTerminal"
+      "console": "internalConsole"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug app + renderer",
+      "configurations": ["Debug app", "Attach to renderer"],
+      "stopAll": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "cliArgs",
+      "type": "promptString",
+      "description": "CLI arguments",
+      "default": "analyze"
     }
   ]
 }

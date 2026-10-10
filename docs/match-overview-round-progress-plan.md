@@ -1,5 +1,10 @@
 # Match Overview Cumulative Round Progress Plan
 
+## 2026-10-10 上游兼容更新
+
+保留回合累计统计与时间轴交互。比赛 checksum 改变或所选回合超出最新比赛范围时，在有条件的
+渲染状态更新中重置选择，不再通过 effect 同步重置，适配新版 React lint 规则；默认仍显示全场统计。
+
 ## Goal
 
 Add an optional cumulative round filter to the match Overview page. The two team scoreboards should show statistics from

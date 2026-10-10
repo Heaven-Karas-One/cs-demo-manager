@@ -14,6 +14,8 @@ import { isMac } from 'csdm/node/os/is-mac';
 import { StartupBehavior } from 'csdm/common/types/startup-behavior';
 import { getRegistryStringKey, writeRegistryStringKey } from 'csdm/node/os/windows-registry';
 import { APP_TITLE, APP_USER_MODEL_ID } from 'csdm/common/app-identity';
+import { getSettings } from 'csdm/node/settings/get-settings';
+import { updateSettings } from 'csdm/node/settings/update-settings';
 
 // @platform linux
 function getDesktopFilePath() {
@@ -44,13 +46,16 @@ export async function getSystemStartupBehavior(): Promise<StartupBehavior> {
   }
 
   if (isMac) {
-    const settings = app.getLoginItemSettings();
-    if (!settings.openAtLogin) {
+    // macOS 13+ can't start the app hidden at login (Apple removed the option with the new login items API, which is
+    // why Electron dropped openAsHidden) and macOS login items don't support command-line arguments, so the
+    // minimized preference is stored in the settings file.
+    const { openAtLogin } = app.getLoginItemSettings();
+    if (!openAtLogin) {
       return StartupBehavior.Off;
     }
 
-    // oxlint-disable-next-line typescript/no-deprecated
-    return settings.openAsHidden ? StartupBehavior.Minimized : StartupBehavior.On;
+    const settings = await getSettings();
+    return settings.startMinimizedAtLogin ? StartupBehavior.Minimized : StartupBehavior.On;
   }
 
   const desktopFilePath = getDesktopFilePath();
@@ -70,6 +75,14 @@ export async function getSystemStartupBehavior(): Promise<StartupBehavior> {
 export async function updateSystemStartupBehavior(behavior: StartupBehavior) {
   if (IS_DEV) {
     return;
+  }
+
+  if (isMac) {
+    // Login item arguments are not forwarded to the app on macOS, the minimized preference is read from the settings
+    // file at launch instead.
+    await updateSettings({
+      startMinimizedAtLogin: behavior === StartupBehavior.Minimized,
+    });
   }
 
   if (!isLinux) {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { server } from './server';
-import { RendererServerMessageName } from 'csdm/server/renderer-server-message-name';
+import { ServerPushMessageName } from 'csdm/server/messages/server-push-message-name';
 import { getErrorCodeFromError } from './get-error-code-from-error';
 import { ErrorCode } from 'csdm/common/error-code';
 import { VideoStatus } from 'csdm/common/types/video-status';
@@ -14,6 +14,8 @@ class VideoQueue {
   private videos: Video[] = [];
   private currentVideo: Video | undefined;
   private abortControllers: { [videoId: string]: AbortController | null } = {};
+  // Tracks which client connection queued a video so its videos can be canceled when it disconnects.
+  private clientIdPerVideoId = new Map<string, string>();
   private isPaused = true;
 
   public resume() {
@@ -22,16 +24,16 @@ class VideoQueue {
     }
 
     this.isPaused = false;
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.VideoQueueResumed,
+    server.sendPushMessage({
+      name: ServerPushMessageName.VideoQueueResumed,
     });
     void this.loopUntilRecodingDone();
   }
 
   public pause() {
     this.isPaused = true;
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.VideoQueuePaused,
+    server.sendPushMessage({
+      name: ServerPushMessageName.VideoQueuePaused,
     });
   }
 
@@ -39,13 +41,35 @@ class VideoQueue {
     for (const id of ids) {
       this.abortVideo(id);
     }
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.VideosRemovedFromQueue,
+    server.sendPushMessage({
+      name: ServerPushMessageName.VideosRemovedFromQueue,
       payload: ids,
     });
   }
 
-  public addVideo(partialVideo: AddVideoPayload) {
+  public removeVideosAddedByClient(clientId: string) {
+    const videoIds: string[] = [];
+    for (const [videoId, ownerClientId] of this.clientIdPerVideoId) {
+      if (ownerClientId === clientId) {
+        videoIds.push(videoId);
+      }
+    }
+
+    if (videoIds.length > 0) {
+      logger.log(`Removing ${videoIds.length} video(s) added by the client ${clientId}`);
+      this.removeVideos(videoIds);
+    }
+  }
+
+  public isBusy() {
+    return this.currentVideo !== undefined || (!this.isPaused && this.videos.length > 0);
+  }
+
+  public getIsPaused() {
+    return this.isPaused;
+  }
+
+  public addVideo(partialVideo: AddVideoPayload, clientId?: string) {
     const isUpdate = partialVideo.id;
     const id = partialVideo.id ?? randomUUID();
     const date = partialVideo.date ?? new Date().toISOString();
@@ -61,15 +85,20 @@ class VideoQueue {
     };
     this.videos.push(video);
     this.abortControllers[id] = new AbortController();
+    if (typeof clientId === 'string') {
+      this.clientIdPerVideoId.set(id, clientId);
+    }
 
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.VideoAddedToQueue,
+    server.sendPushMessage({
+      name: ServerPushMessageName.VideoAddedToQueue,
       payload: video,
     });
 
     if (!this.isPaused) {
       void this.loopUntilRecodingDone();
     }
+
+    return video;
   }
 
   private abortVideo(id: string) {
@@ -78,6 +107,7 @@ class VideoQueue {
       abortController.abort();
       delete this.abortControllers[id];
     }
+    this.clientIdPerVideoId.delete(id);
 
     if (this.currentVideo?.id === id) {
       this.currentVideo = undefined;
@@ -112,7 +142,7 @@ class VideoQueue {
 
   private readonly processVideo = async (video: Video) => {
     try {
-      this.updateCurrentVideoAnNotifyRendererProcess({ status: VideoStatus.Recording });
+      this.updateCurrentVideoAndNotifyRendererProcess({ status: VideoStatus.Recording });
       const ctrl = new AbortController();
       this.abortControllers[video.id] = ctrl;
 
@@ -121,23 +151,23 @@ class VideoQueue {
         videoId: video.id,
         signal: ctrl.signal,
         onGameStart: () => {
-          this.updateCurrentVideoAnNotifyRendererProcess({ status: VideoStatus.Recording });
+          this.updateCurrentVideoAndNotifyRendererProcess({ status: VideoStatus.Recording });
         },
         onMoveFilesStart: () => {
-          this.updateCurrentVideoAnNotifyRendererProcess({ status: VideoStatus.MovingFiles });
+          this.updateCurrentVideoAndNotifyRendererProcess({ status: VideoStatus.MovingFiles });
         },
         onSequenceStart: (sequenceNumber, sequencePosition) => {
-          this.updateCurrentVideoAnNotifyRendererProcess({
+          this.updateCurrentVideoAndNotifyRendererProcess({
             status: VideoStatus.Converting,
             currentSequence: sequenceNumber,
             currentSequencePosition: sequencePosition,
           });
         },
         onConcatenateSequencesStart: () => {
-          this.updateCurrentVideoAnNotifyRendererProcess({ status: VideoStatus.Concatenating });
+          this.updateCurrentVideoAndNotifyRendererProcess({ status: VideoStatus.Concatenating });
         },
       });
-      this.updateCurrentVideoAnNotifyRendererProcess({ status: VideoStatus.Success });
+      this.updateCurrentVideoAndNotifyRendererProcess({ status: VideoStatus.Success });
       delete this.abortControllers[video.id];
     } catch (error) {
       if (error instanceof AbortError) {
@@ -156,7 +186,7 @@ class VideoQueue {
           output = error.message;
         }
 
-        this.updateCurrentVideoAnNotifyRendererProcess({
+        this.updateCurrentVideoAndNotifyRendererProcess({
           status: VideoStatus.Error,
           output,
           errorCode,
@@ -164,10 +194,11 @@ class VideoQueue {
       }
     } finally {
       delete this.abortControllers[video.id];
+      this.clientIdPerVideoId.delete(video.id);
     }
   };
 
-  private updateCurrentVideoAnNotifyRendererProcess = (video: Partial<Video>) => {
+  private updateCurrentVideoAndNotifyRendererProcess = (video: Partial<Video>) => {
     if (!this.currentVideo) {
       return;
     }
@@ -176,8 +207,8 @@ class VideoQueue {
       ...this.currentVideo,
       ...video,
     };
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.VideoUpdated,
+    server.sendPushMessage({
+      name: ServerPushMessageName.VideoUpdated,
       payload: this.currentVideo,
     });
   };

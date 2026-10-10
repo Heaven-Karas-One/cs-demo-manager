@@ -18,11 +18,12 @@ The `vp` CLI must be installed; see the Vite+ documentation.
 - Desktop framework: Electron.
 - Languages: TypeScript for the app/CLI, C++ for CS2/CS:GO plugins and Node.js native addons.
 - UI: React, Redux Toolkit, React Router, Tailwind CSS, ECharts, Motion, and related libraries.
-- Backend: PostgreSQL database through `pg` and `kysely`, plus a local WebSocket server through `ws`.
+- Backend: PostgreSQL database through `pg` and `kysely`, plus a shared local WebSocket daemon through `ws`.
+  Bundled PostgreSQL is available for new installations; external mode preserves existing PostgreSQL connections.
 - i18n: LinguiJS and Crowdin.
 - Linting: oxlint with custom rules in `linter/`.
 - Testing: Vitest through `vite-plus/test`.
-- Build: Vite+, esbuild, and electron-builder.
+- Build: Vite+, Rolldown, and electron-builder.
 - Counter-Strike specific: `@akiver/cs-demo-analyzer`, `@akiver/csgo-voice-extractor`, `csgo-protobuf`, and
   `csgo-sharecode`.
 
@@ -64,8 +65,8 @@ Before submitting changes, all of the following should pass when practical:
 The app has three main OS processes:
 
 - `src/electron-main/`: Electron main process, app window, shell integrations, updater, native OS coordination.
-- `src/server/`: local WebSocket server and message handlers. The renderer asks this process for database and filesystem
-  work.
+- `src/server/`: shared WebSocket daemon and message handlers. The renderer and CLI use this process for database,
+  filesystem, analysis, and video work. It can finish pending tasks after the GUI closes.
 - `src/ui/`: React renderer process.
 
 Shared or non-renderer code lives in:
@@ -81,6 +82,9 @@ The renderer and main process communicate with the local server over WebSocket m
 3. A server handler in `src/server/handlers/renderer-process/`.
 4. A renderer message/action/hook in `src/ui/`.
 
+WebSocket message enums and payload types live in `src/server/messages/`. Request wiring is documented in
+`skills/process-communication/SKILL.md`; daemon attach/spawn code lives in `src/node/daemon/`.
+
 ## Project Structure
 
 ```text
@@ -93,6 +97,8 @@ src/
   electron-main/     # Electron main process only
   node/              # Pure Node.js code for non-renderer processes
     database/        # Kysely queries organized by entity
+      embedded/      # Bundled PostgreSQL lifecycle
+    daemon/          # Shared daemon discovery and startup
     settings/        # App settings and schema migrations
     counter-strike/  # CS process detection and game interaction
     video/           # FFmpeg, HLAE, VirtualDub, and video helpers
@@ -159,9 +165,10 @@ When adding or changing user-visible UI strings:
 
 ## Current Customization Notes
 
-- The current source settings schema is `13`, inherited from upstream commit `c88227fd feat: unzip demos from archives`.
-  Do not lower it unless intentionally reverting that upstream feature. Installed app version `12` is older and may reset
-  shared `.csdm/settings.json` if it sees schema `13`.
+- The current source settings schema is `14`; migration v14 preserves existing connections as external PostgreSQL.
+  The database schema is `15`, adding indexes without replacing match/player data. Older apps may reset newer shared
+  `.csdm/settings.json` on downgrade; keep installed and custom app schema versions compatible.
+- The 2026-10-10 upstream sync is documented in `docs/upstream-2026-10-10-sync-log.md`.
 - Local design plans live in `docs/`. The match overview cumulative round-stat design is in
   `docs/match-overview-round-progress-plan.md`.
 - Player grenade profile customizations are documented in `docs/player-grenades-statistics-plan.md`.

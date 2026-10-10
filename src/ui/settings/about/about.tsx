@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Trans } from '@lingui/react/macro';
 import { SettingsView } from 'csdm/ui/settings/settings-view';
 import { useWebSocketClient } from 'csdm/ui/hooks/use-web-socket-client';
-import { RendererClientMessageName } from 'csdm/server/renderer-client-message-name';
+import { RendererClientMessageName } from 'csdm/server/messages/renderer-client-message-name';
 import type { Migration } from 'csdm/node/database/migrations/fetch-migrations';
 import { CopyButton } from 'csdm/ui/components/buttons/copy-button';
 import { ExternalLink } from 'csdm/ui/components/external-link';
@@ -18,6 +18,8 @@ import { SeeChangelogButton } from './see-changelog-button';
 import { RevealCounterStrikeLogFileButton } from './reveal-counter-strike-log-file-button';
 import { Game } from 'csdm/common/types/counter-strike';
 import { APP_TITLE } from 'csdm/common/app-identity';
+import { DatabaseMode } from 'csdm/common/types/database-mode';
+import { useDatabaseSettings } from 'csdm/ui/settings/database/use-database-settings';
 
 export function About() {
   const client = useWebSocketClient();
@@ -25,6 +27,8 @@ export function About() {
   const info = window.csdm.getAppInformation();
   const { autoDownloadUpdates } = useSettings();
   const updateSettings = useUpdateSettings();
+  const databaseSettings = useDatabaseSettings();
+  const isEmbeddedDatabase = databaseSettings.mode === DatabaseMode.Embedded;
 
   useEffect(() => {
     void (async () => {
@@ -42,6 +46,9 @@ export function About() {
     `OS: ${info.platform} ${info.arch} ${info.osVersion}`,
     `Electron: ${info.electronVersion}`,
     `Chrome: ${info.chromeVersion}`,
+    isEmbeddedDatabase
+      ? 'Database: embedded'
+      : `Database: external (${databaseSettings.hostname}:${databaseSettings.port})`,
     'Last database migrations:',
     ...migrations.map((migration) => `v${migration.version} - ${migration.date}`),
   ];
@@ -93,10 +100,17 @@ export function About() {
             <Trans>Logs</Trans>
           </h2>
           <div className="mt-4 flex items-center gap-x-8">
-            <RevealLogFileButton />
+            <RevealLogFileButton filePath={logger.getLogFilePath()}>
+              <Trans>Reveal log file</Trans>
+            </RevealLogFileButton>
             <ClearLogsButton />
             <RevealCounterStrikeLogFileButton game={Game.CS2} />
             <RevealCounterStrikeLogFileButton game={Game.CSGO} />
+            {isEmbeddedDatabase && (
+              <RevealLogFileButton filePath={window.csdm.embeddedDatabaseLogFilePath}>
+                <Trans>Reveal PostgreSQL log file</Trans>
+              </RevealLogFileButton>
+            )}
           </div>
         </section>
 

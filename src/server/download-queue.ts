@@ -1,13 +1,11 @@
 import fs from 'fs-extra';
 import { pipeline } from 'node:stream';
 import { Client, interceptors } from 'undici';
-import b2 from 'unbzip2-stream';
 import unzipper from 'unzipper';
-import zlib from 'node:zlib';
 import path from 'node:path';
 import util from 'node:util';
 import { assertDownloadFolderIsValid } from 'csdm/node/download/assert-download-folder-is-valid';
-import { RendererServerMessageName } from 'csdm/server/renderer-server-message-name';
+import { ServerPushMessageName } from 'csdm/server/messages/server-push-message-name';
 import { server } from 'csdm/server/server';
 import { loadDemoByPath } from 'csdm/node/demo/load-demo-by-path';
 import { getSettings } from 'csdm/node/settings/get-settings';
@@ -22,7 +20,25 @@ import { WriteDemoInfoFileError } from 'csdm/node/download/errors/write-info-fil
 import { insertDownloadHistory } from 'csdm/node/database/download-history/insert-download-history';
 import { InvalidDemoHeader } from 'csdm/node/demo/errors/invalid-demo-header';
 import { insertDemos } from 'csdm/node/database/demos/insert-demos';
+import { ArchiveFormat } from 'csdm/common/types/archive-format';
+import { getArchiveFormatFromDemoUrl } from 'csdm/node/download/get-archive-format-from-demo-url';
+import { createDecompressStream } from 'csdm/node/demo/create-decompress-stream';
 const streamPipeline = util.promisify(pipeline);
+
+// Stream decompressing the downloaded demo on the fly.
+function createDemoTransformStream(demoUrl: string): NodeJS.WritableStream {
+  const archiveFormat = getArchiveFormatFromDemoUrl(demoUrl);
+  if (archiveFormat === undefined) {
+    throw new Error('Unsupported demo archive');
+  }
+
+  // Unlike the other formats a .zip may hold several files, only the first one is extracted.
+  if (archiveFormat === ArchiveFormat.Zip) {
+    return unzipper.ParseOne();
+  }
+
+  return createDecompressStream(archiveFormat);
+}
 
 class DownloadDemoQueue {
   private downloads: Download[] = [];
@@ -47,8 +63,8 @@ class DownloadDemoQueue {
 
     this.downloads.push(download);
 
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.DownloadsAdded,
+    server.sendPushMessage({
+      name: ServerPushMessageName.DownloadsAdded,
       payload: [download],
     });
 
@@ -88,14 +104,18 @@ class DownloadDemoQueue {
 
     this.downloads.push(...validDownloads);
 
-    server.sendMessageToRendererProcess({
-      name: RendererServerMessageName.DownloadsAdded,
+    server.sendPushMessage({
+      name: ServerPushMessageName.DownloadsAdded,
       payload: validDownloads,
     });
 
     void this.loopUntilDownloadsDone();
 
     return validDownloads;
+  };
+
+  public hasDownloads = () => {
+    return this.currentDownload !== undefined || this.downloads.length > 0;
   };
 
   public getDownloads = () => {
@@ -166,13 +186,14 @@ class DownloadDemoQueue {
       const url = new URL(currentDownload.demoUrl);
       const client = new Client(url.origin).compose(interceptors.redirect({ maxRedirections: 1 }));
       const response = await client.request({
-        path: url.pathname,
+        // Keep the query parameters, download links may be signed URLs that require them.
+        path: `${url.pathname}${url.search}`,
         signal: controller.signal,
         method: 'GET',
       });
       if (response.statusCode === 404) {
-        server.sendMessageToRendererProcess({
-          name: RendererServerMessageName.DownloadDemoExpired,
+        server.sendPushMessage({
+          name: ServerPushMessageName.DownloadDemoExpired,
           payload: currentDownload.matchId,
         });
         return;
@@ -200,8 +221,8 @@ class DownloadDemoQueue {
             matchId: currentDownload.matchId,
             progress,
           };
-          server.sendMessageToRendererProcess({
-            name: RendererServerMessageName.DownloadDemoProgress,
+          server.sendPushMessage({
+            name: ServerPushMessageName.DownloadDemoProgress,
             payload,
           });
           currentProgress = progress;
@@ -209,17 +230,7 @@ class DownloadDemoQueue {
       });
 
       const out = fs.createWriteStream(demoPath);
-      let transformStream: NodeJS.WritableStream;
-      const { demoUrl } = currentDownload;
-      if (demoUrl.endsWith('.gz')) {
-        transformStream = zlib.createGunzip();
-      } else if (demoUrl.endsWith('.bz2')) {
-        transformStream = b2();
-      } else if (demoUrl.endsWith('.zip')) {
-        transformStream = unzipper.ParseOne();
-      } else {
-        throw new Error('Unsupported demo archive');
-      }
+      const transformStream = createDemoTransformStream(currentDownload.demoUrl);
 
       await streamPipeline(response.body, transformStream, out);
       if (currentDownload.source === DownloadSource.Valve) {
@@ -240,8 +251,8 @@ class DownloadDemoQueue {
       }
       await insertDownloadHistory(currentDownload.matchId);
 
-      server.sendMessageToRendererProcess({
-        name: RendererServerMessageName.DownloadDemoSuccess,
+      server.sendPushMessage({
+        name: ServerPushMessageName.DownloadDemoSuccess,
         payload: {
           demoChecksum: demo.checksum,
           download: currentDownload,
@@ -256,16 +267,16 @@ class DownloadDemoQueue {
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
         logger.error(error);
-        server.sendMessageToRendererProcess({
-          name: RendererServerMessageName.DownloadDemoError,
+        server.sendPushMessage({
+          name: ServerPushMessageName.DownloadDemoError,
           payload: currentDownload.matchId,
         });
       }
       if (error instanceof InvalidDemoHeader) {
         logger.error('Invalid demo header from downloaded demo');
         logger.error(error);
-        server.sendMessageToRendererProcess({
-          name: RendererServerMessageName.DownloadDemoCorrupted,
+        server.sendPushMessage({
+          name: ServerPushMessageName.DownloadDemoCorrupted,
           payload: currentDownload.matchId,
         });
       }
@@ -336,8 +347,8 @@ class DownloadDemoQueue {
   private loadDownloadedDemo = async (demoPath: string) => {
     try {
       const demo = await loadDemoByPath(demoPath);
-      server.sendMessageToRendererProcess({
-        name: RendererServerMessageName.DownloadDemoInCurrentFolderLoaded,
+      server.sendPushMessage({
+        name: ServerPushMessageName.DownloadDemoInCurrentFolderLoaded,
         payload: demo,
       });
     } catch (error) {

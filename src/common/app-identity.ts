@@ -2,3 +2,4 @@ const APP_NAME = 'CS Demo Manager';
 const APP_VARIANT = 'CUSTOM';
 export const APP_TITLE = `${APP_NAME} ${APP_VARIANT}`;
 export const APP_USER_MODEL_ID = 'com.heavenkaras.csdm.custom';
+export const APP_DAEMON_INFO_FILE_NAME = `daemon-${APP_USER_MODEL_ID}.json`;
